@@ -37,6 +37,25 @@ def test_parse_series_title_strips_komik_prefix():
     assert parse_series_title(_load("series.html")) == "Naruto"
 
 
+def test_parse_search_prefers_h3_title_over_genre_label():
+    # The thumbnail anchor's text is a genre label ("Manga Aksi"); the real
+    # series name lives in the <h3> of the second anchor and must win.
+    html = (
+        '<a href="/manga/one-piece/"><img src="t.jpg">'
+        '<div class="tpe1_inf"><b>Manga</b> Aksi</div></a>'
+        '<a href="/manga/one-piece/"><h3>One Piece</h3></a>'
+    )
+    results = parse_search(html)
+    assert len(results) == 1
+    assert results[0].title == "One Piece"
+    assert results[0].url == "https://komiku.org/manga/one-piece/"
+
+
+def test_parse_series_title_falls_back_to_title_tag():
+    html = "<head><title>Komik Bleach - Komiku</title></head><body></body>"
+    assert parse_series_title(html) == "Bleach"
+
+
 from parser import parse_images
 
 

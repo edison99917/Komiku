@@ -1,6 +1,7 @@
 import argparse
 import sys
 from pathlib import Path
+from urllib.parse import quote_plus
 
 from client import make_session, get
 from downloader import build_cbz, download_images
@@ -8,7 +9,9 @@ from naming import safe_filename, chapter_label
 from parser import parse_search, parse_chapters, parse_images, parse_series_title
 from ranges import parse_range, filter_chapters
 
-SEARCH_URL = "https://komiku.org/?s={query}"
+# komiku.org renders search results client-side; the actual results are served
+# as an HTML fragment from this endpoint.
+SEARCH_URL = "https://api.komiku.org/?post_type=manga&s={query}"
 
 
 def default_output_dir():
@@ -44,7 +47,7 @@ def run(title, chapters_spec, output_root, delay, force):
     session = make_session()
 
     print(f"Searching for {title!r} ...")
-    search_html = get(session, SEARCH_URL.format(query=title), delay=delay).text
+    search_html = get(session, SEARCH_URL.format(query=quote_plus(title)), delay=delay).text
     results = parse_search(search_html)
     chosen = choose_result(results)
     if chosen is None:
@@ -96,6 +99,13 @@ def run(title, chapters_spec, output_root, delay, force):
 
 
 def main(argv=None):
+    # Manga titles often contain non-ASCII punctuation; avoid UnicodeEncodeError
+    # when printing to a legacy (cp1252) Windows console.
+    try:
+        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    except (AttributeError, ValueError):
+        pass
+
     parser = argparse.ArgumentParser(description="Download manga from komiku.org as CBZ.")
     parser.add_argument("title", help="manga title to search for")
     parser.add_argument("-c", "--chapters", default=None,

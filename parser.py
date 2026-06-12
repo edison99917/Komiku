@@ -1,26 +1,35 @@
 import re
+from urllib.parse import urljoin
 
 from bs4 import BeautifulSoup
 
 from models import SearchResult, Chapter
+
+BASE_URL = "https://komiku.org"
 
 _MANGA_RE = re.compile(r"/manga/[^/]+/?$")
 
 
 def parse_search(html):
     soup = BeautifulSoup(html, "html.parser")
-    results = []
-    seen = set()
+    titles = {}
+    order = []
     for a in soup.find_all("a", href=True):
         href = a["href"]
         if not _MANGA_RE.search(href):
             continue
-        if href in seen:
-            continue
-        seen.add(href)
-        title = a.get_text(strip=True) or href
-        results.append(SearchResult(title=title, url=href))
-    return results
+        url = urljoin(BASE_URL, href)
+        # Each result links twice: a thumbnail anchor (whose text is a genre
+        # label like "Manga Aksi") and a title anchor carrying an <h3> with the
+        # real series name. Prefer the <h3>.
+        h3 = a.find("h3")
+        title = h3.get_text(strip=True) if h3 else a.get_text(strip=True)
+        if url not in titles:
+            order.append(url)
+            titles[url] = title
+        elif h3 and title:
+            titles[url] = title
+    return [SearchResult(title=titles[u] or u, url=u) for u in order]
 
 
 _CHAPTER_RE = re.compile(r"-chapter-([0-9]+(?:-[0-9]+)?)/?$")
@@ -40,17 +49,19 @@ def parse_chapters(html):
         num = _chapter_number(a["href"])
         if num is None:
             continue
-        chapters[num] = Chapter(number=num, url=a["href"])
+        chapters[num] = Chapter(number=num, url=urljoin(BASE_URL, a["href"]))
     return sorted(chapters.values(), key=lambda c: c.number)
 
 
 def parse_series_title(html):
     soup = BeautifulSoup(html, "html.parser")
-    name = soup.find(itemprop="name")
-    text = name.get_text(strip=True) if name else ""
+    og = soup.find("meta", attrs={"property": "og:title"})
+    text = og.get("content", "").strip() if og and og.get("content") else ""
+    if not text and soup.title and soup.title.string:
+        # e.g. "Komik Naruto - Komiku" -> "Komik Naruto"
+        text = soup.title.string.split(" - ")[0].strip()
     if not text:
-        h1 = soup.find("h1")
-        text = h1.get_text(strip=True) if h1 else "Unknown"
+        text = "Unknown"
     return re.sub(r"^Komik\s+", "", text).strip()
 
 

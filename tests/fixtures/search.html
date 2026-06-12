@@ -1,16 +1,30 @@
 <!DOCTYPE html>
+<!-- Mirrors the markup returned by https://api.komiku.org/?post_type=manga&s=...
+     Each result links twice: a thumbnail anchor whose visible text is a genre
+     label ("Manga" + "Aksi"), and a ".kan" anchor carrying the real <h3> title.
+     Links are relative. -->
 <html><body>
-<div class="daftar">
-  <div class="bge">
-    <a href="https://komiku.org/manga/naruto/" class="bgei">
-      <h3>Naruto</h3>
+<div class="bge">
+  <div class="bgei">
+    <a href="/manga/naruto/">
+      <img alt="Naruto" src="https://thumbnail.komiku.org/x.jpg">
+      <div class="tpe1_inf"><b>Manga</b> Aksi</div>
     </a>
   </div>
-  <div class="bge">
-    <a href="https://komiku.org/manga/naruto-gaiden/" class="bgei">
-      <h3>Naruto Gaiden</h3>
-    </a>
+  <div class="kan">
+    <a href="/manga/naruto/"><h3>Naruto</h3></a>
   </div>
 </div>
-<a href="https://komiku.org/genre/action/">Action</a>
+<div class="bge">
+  <div class="bgei">
+    <a href="/manga/naruto-gaiden/">
+      <img alt="Naruto Gaiden" src="https://thumbnail.komiku.org/y.jpg">
+      <div class="tpe1_inf"><b>Manga</b> Aksi</div>
+    </a>
+  </div>
+  <div class="kan">
+    <a href="/manga/naruto-gaiden/"><h3>Naruto Gaiden</h3></a>
+  </div>
+</div>
+<a href="/genre/action/">Action</a>
 </body></html>
