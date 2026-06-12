@@ -16,3 +16,8 @@ def existing_chapter_numbers(series_dir):
         if match:
             numbers.add(float(match.group(1)))
     return numbers
+
+
+def new_chapters(chapters, existing_numbers):
+    """Chapters whose number is not already downloaded, order preserved."""
+    return [c for c in chapters if c.number not in existing_numbers]
