@@ -24,3 +24,25 @@ def test_default_output_dir_is_downloads_manga():
     p = komiku.default_output_dir()
     assert p.name == "manga"
     assert "Downloads" in str(p)
+
+
+def test_slug_from_url():
+    assert komiku._slug_from_url("https://komiku.org/manga/naruto/") == "naruto"
+    assert komiku._slug_from_url("/manga/one-piece") == "one-piece"
+    assert komiku._slug_from_url("https://komiku.org/") is None
+
+
+def test_missing_integer_chapters_reports_gaps():
+    present = {1.0, 1.5, 2.0, 4.0}
+    # integers 3 is the only missing integer in [1, 4]; the missing 2.5 decimal
+    # is intentionally not reported (we can't know which decimals should exist)
+    assert komiku._missing_integer_chapters(1.0, 4.0, present) == [3.0]
+
+
+def test_missing_integer_chapters_single_missing_chapter():
+    # the single-chapter case (-c 5 when 5 doesn't exist) must still warn
+    assert komiku._missing_integer_chapters(5.0, 5.0, {1.0, 2.0}) == [5.0]
+
+
+def test_missing_integer_chapters_decimal_range_no_false_positive():
+    assert komiku._missing_integer_chapters(1.5, 2.5, {1.5, 2.0, 2.5}) == []

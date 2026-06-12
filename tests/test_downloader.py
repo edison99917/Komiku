@@ -20,3 +20,15 @@ def test_build_cbz_creates_parent_dirs(tmp_path):
     out = tmp_path / "Naruto" / "Naruto - Chapter 1.cbz"
     build_cbz([b"x"], out)
     assert out.exists()
+
+
+def test_build_cbz_lexicographic_order_past_999_pages(tmp_path):
+    images = [b"x"] * 1000
+    out = tmp_path / "big.cbz"
+    build_cbz(images, out)
+    with zipfile.ZipFile(out) as zf:
+        names = zf.namelist()
+        # 4-digit padding so lexical sort matches numeric (insertion) order
+        assert names[0] == "0001.jpg"
+        assert names[-1] == "1000.jpg"
+        assert sorted(names) == names

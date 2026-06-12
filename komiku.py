@@ -1,4 +1,6 @@
 import argparse
+import math
+import re
 import sys
 from pathlib import Path
 from urllib.parse import quote_plus
@@ -33,14 +35,15 @@ def choose_result(results):
         print("Invalid choice, try again.")
 
 
-def _expected_missing(lo, hi, present):
-    missing = []
-    n = lo
-    while n <= hi:
-        if float(n) not in present:
-            missing.append(float(n))
-        n += 1
-    return missing
+def _slug_from_url(url):
+    m = re.search(r"/manga/([^/]+)/?$", url)
+    return m.group(1) if m else None
+
+
+def _missing_integer_chapters(lo, hi, present):
+    """Integer chapter numbers within [lo, hi] that the series doesn't have."""
+    return [float(n) for n in range(math.ceil(lo), math.floor(hi) + 1)
+            if float(n) not in present]
 
 
 def run(title, chapters_spec, output_root, delay, force):
@@ -56,21 +59,22 @@ def run(title, chapters_spec, output_root, delay, force):
 
     series_html = get(session, chosen.url, delay=delay).text
     series_title = parse_series_title(series_html)
-    all_chapters = parse_chapters(series_html)
+    all_chapters = parse_chapters(series_html, _slug_from_url(chosen.url))
     if not all_chapters:
         print("No chapters found on the series page.")
         return 1
 
     lo, hi = parse_range(chapters_spec)
     selected = filter_chapters(all_chapters, lo, hi)
-    if not selected:
-        print("No chapters matched the requested range.")
-        return 1
 
     if lo is not None:
         present = {c.number for c in all_chapters}
-        for n in _expected_missing(lo, hi, present):
+        for n in _missing_integer_chapters(lo, hi, present):
             print(f"  ! chapter {chapter_label(n)} not available, skipping")
+
+    if not selected:
+        print("No chapters matched the requested range.")
+        return 1
 
     series_dir = Path(output_root) / safe_filename(series_title)
     print(f"Downloading {len(selected)} chapter(s) of {series_title!r} to {series_dir}")

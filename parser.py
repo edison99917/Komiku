@@ -42,14 +42,19 @@ def _chapter_number(href):
     return float(m.group(1).replace("-", "."))
 
 
-def parse_chapters(html):
+def parse_chapters(html, slug=None):
     soup = BeautifulSoup(html, "html.parser")
     chapters = {}
     for a in soup.find_all("a", href=True):
-        num = _chapter_number(a["href"])
+        href = a["href"]
+        num = _chapter_number(href)
         if num is None:
             continue
-        chapters[num] = Chapter(number=num, url=urljoin(BASE_URL, a["href"]))
+        # Series pages link other manga's chapters in sidebars/footers; when the
+        # series slug is known, keep only this series' chapters.
+        if slug and f"/{slug}-chapter-" not in href:
+            continue
+        chapters[num] = Chapter(number=num, url=urljoin(BASE_URL, href))
     return sorted(chapters.values(), key=lambda c: c.number)
 
 

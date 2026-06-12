@@ -56,6 +56,20 @@ def test_parse_series_title_falls_back_to_title_tag():
     assert parse_series_title(html) == "Bleach"
 
 
+def test_parse_chapters_slug_filters_out_other_series():
+    # A sidebar links another manga's chapter; with the slug given it must be
+    # excluded so we don't mix a foreign chapter into this series.
+    html = (
+        '<a href="/naruto-chapter-1/">Chapter 1</a>'
+        '<a href="/naruto-chapter-2/">Chapter 2</a>'
+        '<a href="/bleach-chapter-5/">Bleach Chapter 5</a>'
+    )
+    chapters = parse_chapters(html, slug="naruto")
+    numbers = [c.number for c in chapters]
+    assert numbers == [1.0, 2.0]
+    assert all("/naruto-chapter-" in c.url for c in chapters)
+
+
 from parser import parse_images
 
 
