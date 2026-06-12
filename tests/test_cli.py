@@ -26,12 +26,6 @@ def test_default_output_dir_is_downloads_manga():
     assert "Downloads" in str(p)
 
 
-def test_slug_from_url():
-    assert komiku._slug_from_url("https://komiku.org/manga/naruto/") == "naruto"
-    assert komiku._slug_from_url("/manga/one-piece") == "one-piece"
-    assert komiku._slug_from_url("https://komiku.org/") is None
-
-
 def test_missing_integer_chapters_reports_gaps():
     present = {1.0, 1.5, 2.0, 4.0}
     # integers 3 is the only missing integer in [1, 4]; the missing 2.5 decimal

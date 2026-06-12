@@ -1,6 +1,5 @@
 import argparse
 import math
-import re
 import sys
 from pathlib import Path
 from urllib.parse import quote_plus
@@ -67,11 +66,6 @@ def choose_result(results):
         print("Invalid choice, try again.")
 
 
-def _slug_from_url(url):
-    m = re.search(r"/manga/([^/]+)/?$", url)
-    return m.group(1) if m else None
-
-
 def _missing_integer_chapters(lo, hi, present):
     """Integer chapter numbers within [lo, hi] that the series doesn't have."""
     return [float(n) for n in range(math.ceil(lo), math.floor(hi) + 1)
@@ -113,7 +107,7 @@ def run(title, chapters_spec, output_root, delay, force, update):
 
     series_html = get(session, chosen.url, delay=delay).text
     series_title = parse_series_title(series_html)
-    all_chapters = parse_chapters(series_html, _slug_from_url(chosen.url))
+    all_chapters = parse_chapters(series_html)
     if not all_chapters:
         print("No chapters found on the series page.")
         return 1

@@ -1,4 +1,5 @@
 import re
+from collections import Counter
 from urllib.parse import urljoin
 
 from bs4 import BeautifulSoup
@@ -42,17 +43,35 @@ def _chapter_number(href):
     return float(m.group(1).replace("-", "."))
 
 
-def parse_chapters(html, slug=None):
+_CHAPTER_SLUG_RE = re.compile(r"/([^/]+)-chapter-[0-9]")
+
+
+def _dominant_chapter_slug(hrefs):
+    """The chapter-URL slug shared by most links. A series page is dominated by
+    its own chapters; other-series links (sidebars) are a minority. This is more
+    reliable than the /manga/<slug>, which can differ from the chapter slug
+    (e.g. /manga/batsu-hare/ vs /batsu-harem-chapter-N/)."""
+    counts = Counter()
+    for href in hrefs:
+        m = _CHAPTER_SLUG_RE.search(href)
+        if m:
+            counts[m.group(1)] += 1
+    return counts.most_common(1)[0][0] if counts else None
+
+
+def parse_chapters(html):
     soup = BeautifulSoup(html, "html.parser")
+    hrefs = [a["href"] for a in soup.find_all("a", href=True)]
+    keep = _dominant_chapter_slug(hrefs)
+    if keep is None:
+        return []
     chapters = {}
-    for a in soup.find_all("a", href=True):
-        href = a["href"]
+    for href in hrefs:
         num = _chapter_number(href)
         if num is None:
             continue
-        # Series pages link other manga's chapters in sidebars/footers; when the
-        # series slug is known, keep only this series' chapters.
-        if slug and f"/{slug}-chapter-" not in href:
+        m = _CHAPTER_SLUG_RE.search(href)
+        if not m or m.group(1) != keep:
             continue
         chapters[num] = Chapter(number=num, url=urljoin(BASE_URL, href))
     return sorted(chapters.values(), key=lambda c: c.number)

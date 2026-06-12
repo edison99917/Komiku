@@ -56,18 +56,30 @@ def test_parse_series_title_falls_back_to_title_tag():
     assert parse_series_title(html) == "Bleach"
 
 
-def test_parse_chapters_slug_filters_out_other_series():
-    # A sidebar links another manga's chapter; with the slug given it must be
-    # excluded so we don't mix a foreign chapter into this series.
+def test_parse_chapters_excludes_minority_other_series():
+    # A sidebar links another manga's chapter; the series' own chapters are the
+    # dominant slug, so the foreign (minority) link is excluded.
     html = (
         '<a href="/naruto-chapter-1/">Chapter 1</a>'
         '<a href="/naruto-chapter-2/">Chapter 2</a>'
         '<a href="/bleach-chapter-5/">Bleach Chapter 5</a>'
     )
-    chapters = parse_chapters(html, slug="naruto")
+    chapters = parse_chapters(html)
     numbers = [c.number for c in chapters]
     assert numbers == [1.0, 2.0]
     assert all("/naruto-chapter-" in c.url for c in chapters)
+
+
+def test_parse_chapters_when_manga_slug_differs_from_chapter_slug():
+    # Real case (Batsu Harem): the /manga/ slug is 'batsu-hare' but chapter URLs
+    # use 'batsu-harem'. Chapters must still be found via the dominant slug.
+    html = (
+        '<a href="/batsu-harem-chapter-1/">1</a>'
+        '<a href="/batsu-harem-chapter-2/">2</a>'
+        '<a href="/batsu-harem-chapter-3/">3</a>'
+    )
+    chapters = parse_chapters(html)
+    assert [c.number for c in chapters] == [1.0, 2.0, 3.0]
 
 
 from parser import parse_images
