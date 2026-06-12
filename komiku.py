@@ -5,6 +5,8 @@ import sys
 from pathlib import Path
 from urllib.parse import quote_plus
 
+import library
+
 from client import make_session, get
 from downloader import build_cbz, download_images
 from naming import safe_filename, chapter_label
@@ -74,6 +76,28 @@ def _missing_integer_chapters(lo, hi, present):
     """Integer chapter numbers within [lo, hi] that the series doesn't have."""
     return [float(n) for n in range(math.ceil(lo), math.floor(hi) + 1)
             if float(n) not in present]
+
+
+def select_chapters(all_chapters, chapters_spec, update, series_dir):
+    """Return (selected_chapters, message). In update mode, select chapters not
+    already present in series_dir; otherwise apply the chapter range."""
+    if update:
+        existing = library.existing_chapter_numbers(series_dir)
+        if not existing:
+            return all_chapters, "No existing download found; fetching all chapters."
+        new = library.new_chapters(all_chapters, existing)
+        if not new:
+            return [], f"Already up to date ({len(existing)} chapters)."
+        labels = ", ".join(chapter_label(c.number) for c in new)
+        return new, f"Found {len(new)} new chapter(s): {labels}"
+
+    lo, hi = parse_range(chapters_spec)
+    selected = filter_chapters(all_chapters, lo, hi)
+    if lo is not None:
+        present = {c.number for c in all_chapters}
+        for n in _missing_integer_chapters(lo, hi, present):
+            print(f"  ! chapter {chapter_label(n)} not available, skipping")
+    return selected, ""
 
 
 def run(title, chapters_spec, output_root, delay, force):

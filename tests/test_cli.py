@@ -71,3 +71,41 @@ def test_main_errors_when_no_output_dir(monkeypatch, capsys):
     code = komiku.main(["naruto"])
     assert code == 2
     assert "output directory is required" in capsys.readouterr().out.lower()
+
+
+import library
+from models import Chapter
+
+
+def test_select_chapters_update_returns_only_new(monkeypatch, tmp_path):
+    all_ch = [Chapter(n, f"u{n}") for n in (1.0, 2.0, 3.0)]
+    monkeypatch.setattr(library, "existing_chapter_numbers", lambda d: {1.0, 2.0})
+    selected, msg = komiku.select_chapters(all_ch, chapters_spec=None,
+                                            update=True, series_dir=tmp_path)
+    assert [c.number for c in selected] == [3.0]
+    assert "1 new" in msg
+
+
+def test_select_chapters_update_up_to_date(monkeypatch, tmp_path):
+    all_ch = [Chapter(n, f"u{n}") for n in (1.0, 2.0)]
+    monkeypatch.setattr(library, "existing_chapter_numbers", lambda d: {1.0, 2.0})
+    selected, msg = komiku.select_chapters(all_ch, chapters_spec=None,
+                                            update=True, series_dir=tmp_path)
+    assert selected == []
+    assert "up to date" in msg.lower()
+
+
+def test_select_chapters_update_no_existing_downloads_all(monkeypatch, tmp_path):
+    all_ch = [Chapter(n, f"u{n}") for n in (1.0, 2.0)]
+    monkeypatch.setattr(library, "existing_chapter_numbers", lambda d: set())
+    selected, msg = komiku.select_chapters(all_ch, chapters_spec=None,
+                                            update=True, series_dir=tmp_path)
+    assert [c.number for c in selected] == [1.0, 2.0]
+    assert "no existing download" in msg.lower()
+
+
+def test_select_chapters_range_mode_unchanged(tmp_path):
+    all_ch = [Chapter(n, f"u{n}") for n in (1.0, 2.0, 3.0)]
+    selected, msg = komiku.select_chapters(all_ch, chapters_spec="1-2",
+                                            update=False, series_dir=tmp_path)
+    assert [c.number for c in selected] == [1.0, 2.0]
