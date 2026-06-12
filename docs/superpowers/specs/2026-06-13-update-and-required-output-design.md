@@ -5,7 +5,7 @@
 
 ## Purpose
 
-Two related changes to the Komiku Downloader:
+Three related changes to the Komiku Downloader:
 
 1. **Required output directory.** The program must never save to a silent
    default. The user always specifies where manga goes — via `-o/--output` or
@@ -13,6 +13,20 @@ Two related changes to the Komiku Downloader:
    and exits.
 2. **Update mode (`--update`).** Given a title and an output location, check the
    site for chapters not already downloaded and fetch only the new ones.
+3. **Download robustness.** Retry individual images that fail on transient
+   network errors, and never write a `.cbz` for a chapter that didn't get all
+   its pages — so a partially-failed chapter is re-fetched by `--update`/resume
+   instead of being silently left incomplete forever.
+
+### Motivation for change 3
+
+A full 113-chapter download of "Kichiku Eiyuu" produced ~8 chapters that were
+saved **missing a page**: image GETs hit read-timeouts and connection resets
+(`ConnectionResetError 10054`, `Read timed out`, `IncompleteRead`). The current
+`download_images` skips a failed image and still writes the `.cbz`; because the
+file then exists, resume and `--update` skip it permanently. urllib3's `Retry`
+only covers HTTP status codes and connect errors — not these read-phase
+failures — so they need an explicit per-image retry.
 
 ## Decisions
 
@@ -25,6 +39,8 @@ Two related changes to the Komiku Downloader:
 | New chapters found | Download automatically (no confirm prompt) |
 | Existing-chapter detection | Parse chapter numbers from `.cbz` filenames in the series folder (no state file) |
 | `--update` vs `--chapters` | `--update` ignores `--chapters` (update = "everything new") |
+| Failed images | Retry each image up to 3 attempts on transient errors |
+| Incomplete chapter | Do **not** write its `.cbz`; warn and leave it for the next run to re-fetch |
 
 ## Change 1: Required output directory
 
@@ -87,7 +103,27 @@ new_chapters(chapters, existing_numbers) -> list[Chapter]
 
 Filename pattern: `Chapter\s+([0-9]+(?:\.[0-9]+)?)\.cbz$`, case-insensitive.
 
-## `komiku.py` changes
+## Change 3: Download robustness
+
+**`downloader.download_images(session, urls, delay=0.0, attempts=3)`**
+- For each image URL, try up to `attempts` times. Catch any exception
+  (`requests` timeouts, connection resets, incomplete reads); on failure wait a
+  short backoff (`delay` seconds) and retry. Append the bytes on the first
+  success; if all attempts fail, print a warning and skip that image.
+- Returns the list of successfully downloaded image byte-strings (order
+  preserved). The number returned therefore signals completeness to the caller.
+
+**`run()` completeness gate** (applies to every download, not just update):
+- After `images = download_images(session, image_urls, ...)`, compare counts:
+  - `len(images) == len(image_urls)` → write the `.cbz` as today.
+  - otherwise → print
+    `"! Chapter <label> incomplete (<got>/<total> pages); not saving, will retry next run"`
+    and `continue` **without** writing the `.cbz`.
+- Net effect: a chapter's `.cbz` exists only when complete, so resume and
+  `--update` correctly re-fetch any chapter that previously failed.
+
+This supersedes the current "downloaded zero images, skipping" check (zero is
+just the `0 < total` case of the completeness gate).
 
 - Add `-u/--update` flag (`action="store_true"`).
 - `run(...)` gains an `update` parameter; when true it computes `new` via
@@ -113,6 +149,10 @@ Filename pattern: `Chapter\s+([0-9]+(?:\.[0-9]+)?)\.cbz$`, case-insensitive.
 - CLI: `select_output_dir()` returns `None` on cancel and on picker failure
   (via the `_ask_directory` seam); `main()` exits non-zero when no directory is
   resolved. (Existing picker tests are updated to the new no-default contract.)
+- `downloader.download_images` retries (via a monkeypatched `downloader.get`
+  seam): an image that fails twice then succeeds is included; an image that
+  fails every attempt is skipped; the returned count reflects only successes.
+  Assert the number of attempts is bounded by `attempts`.
 
 ## Out of scope (YAGNI)
 
