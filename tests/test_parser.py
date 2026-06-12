@@ -35,3 +35,16 @@ def test_parse_chapters_sorted_ascending_with_decimals():
 
 def test_parse_series_title_strips_komik_prefix():
     assert parse_series_title(_load("series.html")) == "Naruto"
+
+
+from parser import parse_images
+
+
+def test_parse_images_only_reader_images_in_order():
+    urls = parse_images(_load("chapter.html"))
+    assert urls == [
+        "https://img.komiku.org/wp-content/uploads/2267578-1.jpg",
+        "https://img.komiku.org/wp-content/uploads/2267578-2.jpg",
+        "https://img.komiku.org/wp-content/uploads/2267578-3.jpg",
+    ]
+    assert all("thumbnail.komiku.org" not in u for u in urls)

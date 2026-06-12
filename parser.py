@@ -52,3 +52,15 @@ def parse_series_title(html):
         h1 = soup.find("h1")
         text = h1.get_text(strip=True) if h1 else "Unknown"
     return re.sub(r"^Komik\s+", "", text).strip()
+
+
+def parse_images(html):
+    soup = BeautifulSoup(html, "html.parser")
+    urls = []
+    for img in soup.find_all("img"):
+        src = img.get("src") or img.get("data-src")
+        if not src:
+            continue
+        if "img.komiku.org" in src:
+            urls.append(src)
+    return urls
