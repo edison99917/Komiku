@@ -167,8 +167,8 @@ def main(argv=None):
     parser.add_argument("-c", "--chapters", default=None,
                         help="chapter range, e.g. '1-20', '5', or omit for all")
     parser.add_argument("-o", "--output", default=None,
-                        help="output root folder; if omitted, a folder picker "
-                             "opens (default: ~/Downloads/manga)")
+                        help="output root folder (required); if omitted, a folder "
+                             "picker opens and you must choose one")
     parser.add_argument("--delay", type=float, default=0.5,
                         help="seconds between requests (default 0.5)")
     parser.add_argument("--force", action="store_true",
