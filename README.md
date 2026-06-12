@@ -19,6 +19,16 @@ python -m venv .venv
 .venv\Scripts\python komiku.py "kichiku eiyuu" --update -o "E:\Manga"  # only new
 ```
 
+**Shortcut launcher:** a `komiku.bat` is included so you don't have to type the
+`.venv\Scripts\python` prefix. It works from any directory:
+
+```powershell
+D:\Projects\Komiku\komiku.bat "kichiku eiyuu" -o "D:\Manga"
+D:\Projects\Komiku\komiku.bat "kichiku eiyuu" --update -o "D:\Manga"
+```
+
+(From inside `D:\Projects\Komiku` you can just type `komiku "title" -o ...`.)
+
 When several titles match your search, you'll get a numbered list to pick from.
 
 **Choosing where to save (required):** you must always specify where manga is
