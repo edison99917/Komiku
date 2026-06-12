@@ -38,6 +38,25 @@ def _ask_directory(initialdir):
         root.destroy()
 
 
+def ensure_writable_dir(path):
+    """Create `path` and confirm we can actually write a file into it.
+
+    Windows 'Controlled Folder Access' can make mkdir appear to succeed while
+    silently discarding the folder/file, so we verify by writing a probe file
+    and checking it persisted. Returns True only if the directory is genuinely
+    writable."""
+    path = Path(path)
+    probe = path / ".komiku_write_test"
+    try:
+        path.mkdir(parents=True, exist_ok=True)
+        probe.write_bytes(b"ok")
+        ok = probe.exists()
+        probe.unlink()
+        return ok and path.is_dir()
+    except OSError:
+        return False
+
+
 def select_output_dir():
     """Open the folder picker and return the chosen Path, or None if the user
     cancelled or no GUI is available. There is no default fallback."""
@@ -180,6 +199,17 @@ def main(argv=None):
             print("Error: an output directory is required "
                   "(pass -o/--output or pick a folder).")
             return 2
+
+    if not ensure_writable_dir(output_root):
+        print(f"Error: cannot write to {output_root}.")
+        print("This is usually Windows 'Controlled Folder Access' (ransomware "
+              "protection) blocking writes to folders like Documents, Pictures, "
+              "or Desktop.")
+        print("Fix: choose a folder outside those (e.g. D:\\Manga), or allow "
+              "Python through Controlled Folder Access in Windows Security > "
+              "Virus & threat protection > Ransomware protection.")
+        return 2
+
     try:
         return run(args.title, args.chapters, output_root, args.delay,
                    args.force, args.update)

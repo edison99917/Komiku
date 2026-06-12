@@ -4,6 +4,32 @@ import komiku
 from models import SearchResult
 
 
+def test_ensure_writable_dir_true(tmp_path):
+    target = tmp_path / "sub" / "dir"
+    assert komiku.ensure_writable_dir(target) is True
+    assert target.is_dir()
+
+
+def test_ensure_writable_dir_false_when_write_blocked(tmp_path, monkeypatch):
+    # Simulate Controlled Folder Access: writing the probe file fails.
+    import pathlib
+
+    def blocked_write(self, data):
+        raise OSError("blocked by Controlled Folder Access")
+
+    monkeypatch.setattr(pathlib.Path, "write_bytes", blocked_write)
+    assert komiku.ensure_writable_dir(tmp_path / "x") is False
+
+
+def test_main_errors_when_output_not_writable(monkeypatch, capsys):
+    monkeypatch.setattr(komiku, "ensure_writable_dir", lambda p: False)
+    code = komiku.main(["naruto", "-o", "D:/Documents/Manga"])
+    out = capsys.readouterr().out.lower()
+    assert code == 2
+    assert "cannot write" in out
+    assert "controlled folder access" in out
+
+
 def test_choose_result_single_auto(monkeypatch):
     results = [SearchResult("Naruto", "https://komiku.org/manga/naruto/")]
     chosen = komiku.choose_result(results)
