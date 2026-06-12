@@ -21,3 +21,17 @@ def test_parse_search_titles_and_dedup():
     results = parse_search(_load("search.html"))
     assert len(results) == 2
     assert results[0].title == "Naruto"
+
+
+from parser import parse_chapters, parse_series_title
+
+
+def test_parse_chapters_sorted_ascending_with_decimals():
+    chapters = parse_chapters(_load("series.html"))
+    numbers = [c.number for c in chapters]
+    assert numbers == [1.0, 1.5, 2.0]
+    assert chapters[0].url == "https://komiku.org/naruto-chapter-1/"
+
+
+def test_parse_series_title_strips_komik_prefix():
+    assert parse_series_title(_load("series.html")) == "Naruto"
