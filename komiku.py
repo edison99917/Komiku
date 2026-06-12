@@ -100,7 +100,7 @@ def select_chapters(all_chapters, chapters_spec, update, series_dir):
     return selected, ""
 
 
-def run(title, chapters_spec, output_root, delay, force):
+def run(title, chapters_spec, output_root, delay, force, update):
     session = make_session()
 
     print(f"Searching for {title!r} ...")
@@ -118,19 +118,15 @@ def run(title, chapters_spec, output_root, delay, force):
         print("No chapters found on the series page.")
         return 1
 
-    lo, hi = parse_range(chapters_spec)
-    selected = filter_chapters(all_chapters, lo, hi)
-
-    if lo is not None:
-        present = {c.number for c in all_chapters}
-        for n in _missing_integer_chapters(lo, hi, present):
-            print(f"  ! chapter {chapter_label(n)} not available, skipping")
-
-    if not selected:
-        print("No chapters matched the requested range.")
-        return 1
-
     series_dir = Path(output_root) / safe_filename(series_title)
+    selected, message = select_chapters(all_chapters, chapters_spec, update, series_dir)
+    if message:
+        print(message)
+    if not selected:
+        if not update:
+            print("No chapters matched the requested range.")
+        return 0 if update else 1
+
     print(f"Downloading {len(selected)} chapter(s) of {series_title!r} to {series_dir}")
 
     for ch in selected:
@@ -146,8 +142,10 @@ def run(title, chapters_spec, output_root, delay, force):
             print(f"  ! Chapter {label} had no images, skipping")
             continue
         images = download_images(session, image_urls, delay=delay)
-        if not images:
-            print(f"  ! Chapter {label} downloaded zero images, skipping")
+        if len(images) != len(image_urls):
+            print(f"  ! Chapter {label} incomplete "
+                  f"({len(images)}/{len(image_urls)} pages); "
+                  f"not saving, will retry next run")
             continue
         build_cbz(images, out_path)
         print(f"    saved {out_path.name} ({len(images)} pages)")
@@ -175,6 +173,9 @@ def main(argv=None):
                         help="seconds between requests (default 0.5)")
     parser.add_argument("--force", action="store_true",
                         help="re-download chapters even if the .cbz exists")
+    parser.add_argument("-u", "--update", action="store_true",
+                        help="download only chapters not already in the output "
+                             "folder (ignores --chapters)")
     args = parser.parse_args(argv)
 
     if args.output:
@@ -186,7 +187,8 @@ def main(argv=None):
                   "(pass -o/--output or pick a folder).")
             return 2
     try:
-        return run(args.title, args.chapters, output_root, args.delay, args.force)
+        return run(args.title, args.chapters, output_root, args.delay,
+                   args.force, args.update)
     except ValueError as exc:
         print(f"Error: {exc}")
         return 2
