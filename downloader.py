@@ -15,12 +15,17 @@ def build_cbz(images, out_path):
             zf.writestr(f"{i:0{width}d}.jpg", data)
 
 
-def download_images(session, urls, delay=0.0):
+def download_images(session, urls, delay=0.0, attempts=3):
     images = []
     for idx, url in enumerate(urls, start=1):
-        try:
-            resp = get(session, url, delay=delay)
-            images.append(resp.content)
-        except Exception as exc:
-            print(f"  ! skipped image {idx} ({url}): {exc}")
+        for attempt in range(1, attempts + 1):
+            try:
+                resp = get(session, url, delay=delay)
+                images.append(resp.content)
+                break
+            except Exception as exc:
+                if attempt == attempts:
+                    print(f"  ! skipped image {idx} ({url}) after {attempts} attempts: {exc}")
+                else:
+                    print(f"  . retry image {idx} ({url}): {exc}")
     return images

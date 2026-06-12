@@ -1,6 +1,7 @@
 import zipfile
 from pathlib import Path
 
+import downloader
 from downloader import build_cbz
 
 
@@ -32,3 +33,47 @@ def test_build_cbz_lexicographic_order_past_999_pages(tmp_path):
         assert names[0] == "0001.jpg"
         assert names[-1] == "1000.jpg"
         assert sorted(names) == names
+
+
+class _Resp:
+    def __init__(self, content):
+        self.content = content
+
+
+def test_download_images_retries_then_succeeds(monkeypatch):
+    calls = {"n": 0}
+
+    def fake_get(session, url, delay=0.0):
+        calls["n"] += 1
+        if calls["n"] < 3:
+            raise TimeoutError("read timed out")
+        return _Resp(b"ok")
+
+    monkeypatch.setattr(downloader, "get", fake_get)
+    images = downloader.download_images(None, ["u1"], delay=0, attempts=3)
+    assert images == [b"ok"]
+    assert calls["n"] == 3
+
+
+def test_download_images_skips_after_exhausting_attempts(monkeypatch):
+    calls = {"n": 0}
+
+    def always_fail(session, url, delay=0.0):
+        calls["n"] += 1
+        raise TimeoutError("nope")
+
+    monkeypatch.setattr(downloader, "get", always_fail)
+    images = downloader.download_images(None, ["u1", "u2"], delay=0, attempts=3)
+    assert images == []
+    assert calls["n"] == 6  # 3 attempts per url, 2 urls
+
+
+def test_download_images_returns_only_successes(monkeypatch):
+    def half(session, url, delay=0.0):
+        if url == "bad":
+            raise TimeoutError("nope")
+        return _Resp(b"good")
+
+    monkeypatch.setattr(downloader, "get", half)
+    images = downloader.download_images(None, ["good", "bad", "good"], delay=0, attempts=1)
+    assert images == [b"good", b"good"]
