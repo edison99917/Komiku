@@ -46,3 +46,24 @@ def test_missing_integer_chapters_single_missing_chapter():
 
 def test_missing_integer_chapters_decimal_range_no_false_positive():
     assert komiku._missing_integer_chapters(1.5, 2.5, {1.5, 2.0, 2.5}) == []
+
+
+def test_select_output_dir_returns_chosen(monkeypatch):
+    monkeypatch.setattr(komiku, "_ask_directory", lambda d: "D:/Manga")
+    assert komiku.select_output_dir(Path.home() / "Downloads" / "manga") == Path("D:/Manga")
+
+
+def test_select_output_dir_falls_back_on_cancel(monkeypatch):
+    default = Path.home() / "Downloads" / "manga"
+    monkeypatch.setattr(komiku, "_ask_directory", lambda d: "")
+    assert komiku.select_output_dir(default) == default
+
+
+def test_select_output_dir_falls_back_when_picker_unavailable(monkeypatch):
+    default = Path.home() / "Downloads" / "manga"
+
+    def boom(d):
+        raise RuntimeError("no display")
+
+    monkeypatch.setattr(komiku, "_ask_directory", boom)
+    assert komiku.select_output_dir(default) == default

@@ -21,13 +21,18 @@ python -m venv .venv
 
 When several titles match your search, you'll get a numbered list to pick from.
 
+**Choosing where to save:** if you don't pass `-o/--output`, a folder-picker
+dialog opens so you can select the destination. Cancel it (or run on a machine
+with no GUI) and it falls back to `~/Downloads/manga`. Pass `-o` to skip the
+dialog entirely — useful for scripts.
+
 ### Flags
 
 | Flag | Meaning |
 |------|---------|
 | `title` (positional) | Title to search for |
 | `-c` / `--chapters` | `A-B` range, single `N`, or omit for all (decimals like `698.5` work) |
-| `-o` / `--output` | Output root folder (default: `~/Downloads/manga`) |
+| `-o` / `--output` | Output root folder. If omitted, a folder picker opens (falls back to `~/Downloads/manga`) |
 | `--delay` | Seconds between requests (default `0.5`) |
 | `--force` | Re-download a chapter even if its `.cbz` already exists |
 

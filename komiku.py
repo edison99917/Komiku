@@ -20,6 +20,37 @@ def default_output_dir():
     return Path.home() / "Downloads" / "manga"
 
 
+def _ask_directory(initialdir):
+    """Open a native folder-picker dialog and return the chosen path string
+    ("" if cancelled). Raises if tkinter / a display is unavailable."""
+    import tkinter as tk
+    from tkinter import filedialog
+
+    root = tk.Tk()
+    root.withdraw()
+    root.attributes("-topmost", True)
+    try:
+        return filedialog.askdirectory(
+            title="Choose where to save manga", initialdir=str(initialdir)
+        )
+    finally:
+        root.destroy()
+
+
+def select_output_dir(default):
+    """Let the user pick a save folder via a graphical dialog. Falls back to
+    `default` if the dialog is cancelled or no GUI is available."""
+    try:
+        chosen = _ask_directory(default)
+    except Exception as exc:
+        print(f"(Folder picker unavailable: {exc}; using {default})")
+        return Path(default)
+    if not chosen:
+        print(f"(No folder selected; using {default})")
+        return Path(default)
+    return Path(chosen)
+
+
 def choose_result(results):
     if not results:
         return None
@@ -115,14 +146,18 @@ def main(argv=None):
     parser.add_argument("-c", "--chapters", default=None,
                         help="chapter range, e.g. '1-20', '5', or omit for all")
     parser.add_argument("-o", "--output", default=None,
-                        help="output root folder (default: ~/Downloads/manga)")
+                        help="output root folder; if omitted, a folder picker "
+                             "opens (default: ~/Downloads/manga)")
     parser.add_argument("--delay", type=float, default=0.5,
                         help="seconds between requests (default 0.5)")
     parser.add_argument("--force", action="store_true",
                         help="re-download chapters even if the .cbz exists")
     args = parser.parse_args(argv)
 
-    output_root = Path(args.output) if args.output else default_output_dir()
+    if args.output:
+        output_root = Path(args.output)
+    else:
+        output_root = select_output_dir(default_output_dir())
     try:
         return run(args.title, args.chapters, output_root, args.delay, args.force)
     except ValueError as exc:
