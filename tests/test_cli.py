@@ -50,20 +50,24 @@ def test_missing_integer_chapters_decimal_range_no_false_positive():
 
 def test_select_output_dir_returns_chosen(monkeypatch):
     monkeypatch.setattr(komiku, "_ask_directory", lambda d: "D:/Manga")
-    assert komiku.select_output_dir(Path.home() / "Downloads" / "manga") == Path("D:/Manga")
+    assert komiku.select_output_dir() == Path("D:/Manga")
 
 
-def test_select_output_dir_falls_back_on_cancel(monkeypatch):
-    default = Path.home() / "Downloads" / "manga"
+def test_select_output_dir_none_on_cancel(monkeypatch):
     monkeypatch.setattr(komiku, "_ask_directory", lambda d: "")
-    assert komiku.select_output_dir(default) == default
+    assert komiku.select_output_dir() is None
 
 
-def test_select_output_dir_falls_back_when_picker_unavailable(monkeypatch):
-    default = Path.home() / "Downloads" / "manga"
-
+def test_select_output_dir_none_when_picker_unavailable(monkeypatch):
     def boom(d):
         raise RuntimeError("no display")
 
     monkeypatch.setattr(komiku, "_ask_directory", boom)
-    assert komiku.select_output_dir(default) == default
+    assert komiku.select_output_dir() is None
+
+
+def test_main_errors_when_no_output_dir(monkeypatch, capsys):
+    monkeypatch.setattr(komiku, "_ask_directory", lambda d: "")
+    code = komiku.main(["naruto"])
+    assert code == 2
+    assert "output directory is required" in capsys.readouterr().out.lower()

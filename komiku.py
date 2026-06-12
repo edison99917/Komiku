@@ -37,17 +37,16 @@ def _ask_directory(initialdir):
         root.destroy()
 
 
-def select_output_dir(default):
-    """Let the user pick a save folder via a graphical dialog. Falls back to
-    `default` if the dialog is cancelled or no GUI is available."""
+def select_output_dir():
+    """Open the folder picker and return the chosen Path, or None if the user
+    cancelled or no GUI is available. There is no default fallback."""
     try:
-        chosen = _ask_directory(default)
+        chosen = _ask_directory(default_output_dir())
     except Exception as exc:
-        print(f"(Folder picker unavailable: {exc}; using {default})")
-        return Path(default)
+        print(f"(Folder picker unavailable: {exc})")
+        return None
     if not chosen:
-        print(f"(No folder selected; using {default})")
-        return Path(default)
+        return None
     return Path(chosen)
 
 
@@ -157,7 +156,11 @@ def main(argv=None):
     if args.output:
         output_root = Path(args.output)
     else:
-        output_root = select_output_dir(default_output_dir())
+        output_root = select_output_dir()
+        if output_root is None:
+            print("Error: an output directory is required "
+                  "(pass -o/--output or pick a folder).")
+            return 2
     try:
         return run(args.title, args.chapters, output_root, args.delay, args.force)
     except ValueError as exc:
